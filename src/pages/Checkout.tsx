@@ -141,7 +141,7 @@ export default function Checkout() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Order Total:</span>
-                  <span className="font-medium">${total.toFixed(2)}</span>
+                  <span className="font-medium">₹{total.toFixed(2)}</span>
                 </div>
               </div>
               <p className="text-sm text-gray-500">
@@ -357,26 +357,26 @@ export default function Checkout() {
                       <span className="font-medium mr-2">{item.quantity}x</span>
                       <span>{item.foodItem.name}</span>
                     </div>
-                    <span>${(item.foodItem.price * item.quantity).toFixed(2)}</span>
+                    <span>₹{(item.foodItem.price * item.quantity).toFixed(2)}</span>
                   </div>
                 ))}
                 
                 <div className="border-t pt-4 space-y-2">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Subtotal</span>
-                    <span>${cartTotal.toFixed(2)}</span>
+                    <span>₹{cartTotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Service Fee</span>
-                    <span>${deliveryFee.toFixed(2)}</span>
+                    <span>₹{deliveryFee.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Tax</span>
-                    <span>${taxes.toFixed(2)}</span>
+                    <span>₹{taxes.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between pt-2 border-t font-bold">
                     <span>Total</span>
-                    <span className="text-campus-purple">${total.toFixed(2)}</span>
+                    <span className="text-campus-purple">₹{total.toFixed(2)}</span>
                   </div>
                 </div>
               </CardContent>

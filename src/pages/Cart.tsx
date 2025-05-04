@@ -78,7 +78,7 @@ export default function Cart() {
                   <div>
                     <h3 className="font-semibold text-lg">{item.foodItem.name}</h3>
                     <p className="text-gray-600 text-sm mb-2">{item.foodItem.description}</p>
-                    <p className="text-campus-purple font-bold">${item.foodItem.price.toFixed(2)}</p>
+                    <p className="text-campus-purple font-bold">₹{item.foodItem.price.toFixed(2)}</p>
                   </div>
                   
                   <div className="flex flex-col justify-between mt-4 sm:mt-0">
@@ -132,19 +132,19 @@ export default function Cart() {
             <div className="space-y-3 mb-6">
               <div className="flex justify-between">
                 <span className="text-gray-600">Subtotal</span>
-                <span>${cartTotal.toFixed(2)}</span>
+                <span>₹{cartTotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Delivery Fee</span>
-                <span>${deliveryFee.toFixed(2)}</span>
+                <span>₹{deliveryFee.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Tax</span>
-                <span>${taxes.toFixed(2)}</span>
+                <span>₹{taxes.toFixed(2)}</span>
               </div>
               <div className="flex justify-between pt-3 border-t font-bold">
                 <span>Total</span>
-                <span className="text-campus-purple">${total.toFixed(2)}</span>
+                <span className="text-campus-purple">₹{total.toFixed(2)}</span>
               </div>
             </div>
             
