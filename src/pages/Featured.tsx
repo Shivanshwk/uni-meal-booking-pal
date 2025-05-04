@@ -6,9 +6,9 @@ import { useStore } from "@/store/store";
 export default function Featured() {
   const { foodItems } = useStore();
   
-  // Get featured items (items with isFeatured flag or you could customize this logic)
+  // Get featured items (items with price > ₹100 or special in the name)
   const featuredItems = foodItems.filter(item => 
-    item.price > 8 || item.name.toLowerCase().includes("special")
+    item.price > 100 || item.name.toLowerCase().includes("special")
   );
   
   return (

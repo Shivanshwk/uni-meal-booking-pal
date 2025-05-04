@@ -58,7 +58,7 @@ export default function FoodCard({ food }: FoodCardProps) {
         </div>
         <p className="text-gray-600 text-sm mt-2 line-clamp-2">{food.description}</p>
         <div className="mt-3 flex justify-between items-center">
-          <span className="text-campus-purple font-bold">${food.price.toFixed(2)}</span>
+          <span className="text-campus-purple font-bold">₹{food.price}</span>
           <div className="flex gap-2">
             <Button
               variant="outline"
