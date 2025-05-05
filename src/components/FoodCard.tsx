@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { Heart, ShoppingCart } from "lucide-react";
+import { Heart, ShoppingCart, IndianRupee } from "lucide-react";
 import { FoodItem } from "@/store/types";
 import { useStore } from "@/store/store";
 import { Link } from "react-router-dom";
@@ -58,7 +58,10 @@ export default function FoodCard({ food }: FoodCardProps) {
         </div>
         <p className="text-gray-600 text-sm mt-2 line-clamp-2">{food.description}</p>
         <div className="mt-3 flex justify-between items-center">
-          <span className="text-campus-purple font-bold">₹{food.price}</span>
+          <span className="text-campus-purple font-bold flex items-center">
+            <IndianRupee className="h-3.5 w-3.5 mr-0.5" />
+            {food.price}
+          </span>
           <div className="flex gap-2">
             <Button
               variant="outline"

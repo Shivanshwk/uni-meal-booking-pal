@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { useStore } from "@/store/store";
 import { Button } from "@/components/ui/button";
-import { Heart, ShoppingCart, ChevronLeft, Clock } from "lucide-react";
+import { Heart, ShoppingCart, ChevronLeft, Clock, IndianRupee } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 export default function FoodDetails() {
@@ -60,7 +60,7 @@ export default function FoodDetails() {
               alt={foodItem.name}
               className="w-full h-auto object-cover"
               onError={(e) => {
-                e.currentTarget.src = "https://via.placeholder.com/600x400?text=Food+Image";
+                e.currentTarget.src = "https://source.unsplash.com/random/600x400/?indian-food";
               }}
             />
           </div>
@@ -76,7 +76,10 @@ export default function FoodDetails() {
             </div>
             
             <div className="flex items-center">
-              <span className="text-2xl font-bold text-campus-purple">${foodItem.price.toFixed(2)}</span>
+              <span className="text-2xl font-bold text-campus-purple flex items-center">
+                <IndianRupee className="h-5 w-5 mr-1" />
+                {foodItem.price.toFixed(2)}
+              </span>
             </div>
             
             <div>
@@ -129,13 +132,16 @@ export default function FoodDetails() {
                       alt={food.name}
                       className="w-full h-40 object-cover"
                       onError={(e) => {
-                        e.currentTarget.src = "https://via.placeholder.com/300x200?text=Food+Image";
+                        e.currentTarget.src = "https://source.unsplash.com/random/300x200/?indian-food";
                       }}
                     />
                     <div className="p-4">
                       <div className="flex justify-between items-start">
                         <h3 className="font-semibold">{food.name}</h3>
-                        <span className="text-campus-purple font-bold">${food.price.toFixed(2)}</span>
+                        <span className="text-campus-purple font-bold flex items-center">
+                          <IndianRupee className="h-3.5 w-3.5 mr-0.5" />
+                          {food.price.toFixed(2)}
+                        </span>
                       </div>
                     </div>
                   </div>
