@@ -35,7 +35,7 @@ export default function FoodCard({ food }: FoodCardProps) {
     <div className="bg-white rounded-lg shadow-md overflow-hidden food-card">
       <Link to={`/food/${food.id}`}>
         <img
-          src={food.image}
+          src={food.image || "https://source.unsplash.com/random/300x200/?indian-food"}
           alt={food.name}
           className="w-full h-48 object-cover"
           onError={(e) => {

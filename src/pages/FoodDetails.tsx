@@ -56,7 +56,7 @@ export default function FoodDetails() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="rounded-lg overflow-hidden shadow-md">
             <img
-              src={foodItem.image}
+              src={foodItem.image || "https://source.unsplash.com/random/600x400/?indian-food"}
               alt={foodItem.name}
               className="w-full h-auto object-cover"
               onError={(e) => {
@@ -128,7 +128,7 @@ export default function FoodDetails() {
                 <Link to={`/food/${food.id}`} key={food.id} className="block">
                   <div className="bg-white rounded-lg shadow-md overflow-hidden">
                     <img
-                      src={food.image}
+                      src={food.image || "https://source.unsplash.com/random/300x200/?indian-food"}
                       alt={food.name}
                       className="w-full h-40 object-cover"
                       onError={(e) => {

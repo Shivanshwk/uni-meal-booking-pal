@@ -29,7 +29,7 @@ export default function Cart() {
   };
   
   const handleCheckout = () => {
-    // In a real app, you would navigate to a checkout page
+    // Navigate to checkout page
     navigate("/checkout");
   };
   
@@ -65,7 +65,7 @@ export default function Cart() {
               <div key={item.foodItem.id} className="flex flex-col sm:flex-row gap-4 border-b py-6">
                 <div className="sm:w-1/4">
                   <img
-                    src={item.foodItem.image}
+                    src={item.foodItem.image || "https://source.unsplash.com/random/300x200/?indian-food"}
                     alt={item.foodItem.name}
                     className="w-full h-32 object-cover rounded-md"
                     onError={(e) => {
