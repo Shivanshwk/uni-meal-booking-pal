@@ -69,7 +69,7 @@ export default function Cart() {
                     alt={item.foodItem.name}
                     className="w-full h-32 object-cover rounded-md"
                     onError={(e) => {
-                      e.currentTarget.src = "https://via.placeholder.com/300x200?text=Food+Image";
+                      e.currentTarget.src = "https://source.unsplash.com/random/300x200/?indian-food";
                     }}
                   />
                 </div>

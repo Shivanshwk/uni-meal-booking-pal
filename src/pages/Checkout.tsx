@@ -63,6 +63,11 @@ const simulatedDB: SimulatedDatabase = {
   payments: []
 };
 
+// Generate a random 5-digit token number
+const generateTokenNumber = () => {
+  return Math.floor(10000 + Math.random() * 90000).toString();
+};
+
 export default function Checkout() {
   const { cart, getCartTotal, clearCart, isAuthenticated, user } = useStore();
   const navigate = useNavigate();
@@ -95,10 +100,11 @@ export default function Checkout() {
   }, [isAuthenticated, user]);
 
   // If no items in cart, redirect to cart page
-  if (cart.length === 0 && !orderCompleted) {
-    navigate("/cart");
-    return null;
-  }
+  useEffect(() => {
+    if (cart.length === 0 && !orderCompleted) {
+      navigate("/cart");
+    }
+  }, [cart, orderCompleted, navigate]);
   
   // Generate pickup time options (every 15 minutes from current time)
   const generatePickupTimeOptions = () => {
@@ -150,7 +156,7 @@ export default function Checkout() {
     return new Promise<{orderId: string; tokenNum: string}>((resolve) => {
       setTimeout(() => {
         const orderId = `order_${Math.random().toString(36).substring(2, 15)}`;
-        const tokenNum = Math.floor(10000 + Math.random() * 90000).toString();
+        const tokenNum = generateTokenNumber();
         
         const newOrder = {
           id: orderId,
@@ -188,7 +194,7 @@ export default function Checkout() {
     return new Promise<string>((resolve, reject) => {
       setIsPaymentProcessing(true);
       
-      // Simulate payment processing with a loading state for 6 seconds
+      // Simulate payment processing with a loading state for exactly 6 seconds
       setTimeout(() => {
         const paymentId = `payment_${Math.random().toString(36).substring(2, 15)}`;
         
@@ -279,9 +285,12 @@ export default function Checkout() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="bg-gray-100 p-3 rounded-md text-center">
-                <p className="text-gray-500">Your Token Number</p>
-                <p className="text-4xl font-bold text-campus-purple">{tokenNumber}</p>
+              <div className="bg-gray-100 p-4 rounded-md text-center">
+                <p className="text-gray-500 text-sm">Your Token Number</p>
+                <div className="animate-pulse">
+                  <p className="text-5xl font-bold text-campus-purple py-2">{tokenNumber}</p>
+                </div>
+                <p className="text-xs text-gray-400 mt-2">Show this number when collecting your order</p>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between">
@@ -295,7 +304,7 @@ export default function Checkout() {
                   </span>
                 </div>
               </div>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 mt-2 text-center">
                 Please show your token number when you arrive to pick up your order.
               </p>
             </CardContent>
@@ -494,7 +503,7 @@ export default function Checkout() {
           </div>
           
           <div className="lg:w-1/3">
-            <Card>
+            <Card className="sticky top-4">
               <CardHeader>
                 <CardTitle>Order Summary</CardTitle>
                 <CardDescription>

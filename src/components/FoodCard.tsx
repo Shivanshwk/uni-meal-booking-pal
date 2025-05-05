@@ -39,7 +39,7 @@ export default function FoodCard({ food }: FoodCardProps) {
           alt={food.name}
           className="w-full h-48 object-cover"
           onError={(e) => {
-            e.currentTarget.src = "https://via.placeholder.com/300x200?text=Food+Image";
+            e.currentTarget.src = "https://source.unsplash.com/random/300x200/?indian-food";
           }}
         />
       </Link>
