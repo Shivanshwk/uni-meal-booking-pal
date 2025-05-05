@@ -1,10 +1,10 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/store/store";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, IndianRupee, Clock } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import {
   Card,
@@ -21,6 +21,48 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 
+// Simulated database tables
+type SimulatedDatabase = {
+  users: Array<{
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    orders: string[];
+  }>;
+  orders: Array<{
+    id: string;
+    userId: string;
+    items: Array<{
+      foodItemId: string;
+      name: string;
+      price: number;
+      quantity: number;
+    }>;
+    total: number;
+    status: 'pending' | 'confirmed' | 'ready' | 'completed';
+    paymentStatus: 'pending' | 'paid';
+    tokenNumber: string;
+    orderDate: string;
+    pickupTime: string;
+  }>;
+  payments: Array<{
+    id: string;
+    orderId: string;
+    amount: number;
+    status: 'pending' | 'completed' | 'failed';
+    paymentMethod: string;
+    transactionDate: string;
+  }>;
+};
+
+// Initialize our "database"
+const simulatedDB: SimulatedDatabase = {
+  users: [],
+  orders: [],
+  payments: []
+};
+
 export default function Checkout() {
   const { cart, getCartTotal, clearCart, isAuthenticated, user } = useStore();
   const navigate = useNavigate();
@@ -28,6 +70,7 @@ export default function Checkout() {
   
   // State for order placement
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
   const [orderCompleted, setOrderCompleted] = useState(false);
   const [tokenNumber, setTokenNumber] = useState("");
   
@@ -43,6 +86,14 @@ export default function Checkout() {
   const taxes = cartTotal * 0.08; // Assuming 8% tax
   const total = cartTotal + deliveryFee + taxes;
   
+  useEffect(() => {
+    // Pre-fill form if user is authenticated
+    if (isAuthenticated && user) {
+      setName(user.name);
+      setEmail(user.email);
+    }
+  }, [isAuthenticated, user]);
+
   // If no items in cart, redirect to cart page
   if (cart.length === 0 && !orderCompleted) {
     navigate("/cart");
@@ -76,6 +127,95 @@ export default function Checkout() {
   
   const pickupTimeOptions = generatePickupTimeOptions();
   
+  // Simulate adding user to database
+  const addUserToDatabase = (userData: { name: string; email: string; phone: string }) => {
+    return new Promise<string>((resolve) => {
+      setTimeout(() => {
+        const userId = `user_${Math.random().toString(36).substring(2, 15)}`;
+        simulatedDB.users.push({
+          id: userId,
+          name: userData.name,
+          email: userData.email,
+          phone: userData.phone,
+          orders: []
+        });
+        console.log("User added to database:", simulatedDB.users);
+        resolve(userId);
+      }, 300);
+    });
+  };
+  
+  // Simulate creating an order in database
+  const createOrder = (userId: string, cartItems: typeof cart, pickupTime: string) => {
+    return new Promise<{orderId: string; tokenNum: string}>((resolve) => {
+      setTimeout(() => {
+        const orderId = `order_${Math.random().toString(36).substring(2, 15)}`;
+        const tokenNum = Math.floor(10000 + Math.random() * 90000).toString();
+        
+        const newOrder = {
+          id: orderId,
+          userId: userId,
+          items: cart.map(item => ({
+            foodItemId: item.foodItem.id,
+            name: item.foodItem.name,
+            price: item.foodItem.price,
+            quantity: item.quantity
+          })),
+          total: total,
+          status: 'confirmed' as const,
+          paymentStatus: 'pending' as const,
+          tokenNumber: tokenNum,
+          orderDate: new Date().toISOString(),
+          pickupTime: pickupTime
+        };
+        
+        simulatedDB.orders.push(newOrder);
+        
+        // Add order reference to user
+        const userIndex = simulatedDB.users.findIndex(u => u.id === userId);
+        if (userIndex !== -1) {
+          simulatedDB.users[userIndex].orders.push(orderId);
+        }
+        
+        console.log("Order created:", simulatedDB.orders);
+        resolve({ orderId, tokenNum });
+      }, 600);
+    });
+  };
+  
+  // Simulate payment processing
+  const processPayment = (orderId: string, amount: number, paymentMethod: string) => {
+    return new Promise<string>((resolve, reject) => {
+      setIsPaymentProcessing(true);
+      
+      // Simulate payment processing with a loading state for 6 seconds
+      setTimeout(() => {
+        const paymentId = `payment_${Math.random().toString(36).substring(2, 15)}`;
+        
+        const newPayment = {
+          id: paymentId,
+          orderId,
+          amount,
+          status: 'completed' as const,
+          paymentMethod,
+          transactionDate: new Date().toISOString()
+        };
+        
+        simulatedDB.payments.push(newPayment);
+        
+        // Update order payment status
+        const orderIndex = simulatedDB.orders.findIndex(o => o.id === orderId);
+        if (orderIndex !== -1) {
+          simulatedDB.orders[orderIndex].paymentStatus = 'paid';
+        }
+        
+        console.log("Payment processed:", simulatedDB.payments);
+        setIsPaymentProcessing(false);
+        resolve(paymentId);
+      }, 6000); // 6 second delay to simulate payment processing
+    });
+  };
+  
   const handlePlaceOrder = async () => {
     // Validate form
     if (!name || !email || !phone || !pickupTime) {
@@ -89,18 +229,27 @@ export default function Checkout() {
     
     setIsProcessing(true);
     
-    // Simulate payment processing and order creation
     try {
-      // In a real application, you would call your backend API here
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // 1. Add or get user from database
+      const userId = await addUserToDatabase({ name, email, phone });
       
-      // Generate a random token number
-      const generatedToken = Math.floor(10000 + Math.random() * 90000).toString();
-      setTokenNumber(generatedToken);
+      // 2. Create order in database
+      const { orderId, tokenNum } = await createOrder(userId, cart, pickupTime);
+      setTokenNumber(tokenNum);
       
-      // Clear the cart after successful order
+      // 3. Process payment (only if online payment is selected)
+      if (paymentMethod === "online") {
+        await processPayment(orderId, total, "Credit Card");
+      }
+      
+      // 4. Clear the cart after successful order
       clearCart();
       setOrderCompleted(true);
+      
+      toast({
+        title: "Order placed successfully!",
+        description: `Your token number is ${tokenNum}. Please show it when collecting your order.`,
+      });
       
     } catch (error) {
       toast({
@@ -141,7 +290,9 @@ export default function Checkout() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Order Total:</span>
-                  <span className="font-medium">₹{total.toFixed(2)}</span>
+                  <span className="font-medium flex items-center">
+                    <IndianRupee className="h-3.5 w-3.5 mr-1" />{total.toFixed(2)}
+                  </span>
                 </div>
               </div>
               <p className="text-sm text-gray-500">
@@ -357,26 +508,41 @@ export default function Checkout() {
                       <span className="font-medium mr-2">{item.quantity}x</span>
                       <span>{item.foodItem.name}</span>
                     </div>
-                    <span>₹{(item.foodItem.price * item.quantity).toFixed(2)}</span>
+                    <span className="flex items-center">
+                      <IndianRupee className="h-3.5 w-3.5 mr-1" />
+                      {(item.foodItem.price * item.quantity).toFixed(2)}
+                    </span>
                   </div>
                 ))}
                 
                 <div className="border-t pt-4 space-y-2">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Subtotal</span>
-                    <span>₹{cartTotal.toFixed(2)}</span>
+                    <span className="flex items-center">
+                      <IndianRupee className="h-3.5 w-3.5 mr-1" />
+                      {cartTotal.toFixed(2)}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Service Fee</span>
-                    <span>₹{deliveryFee.toFixed(2)}</span>
+                    <span className="flex items-center">
+                      <IndianRupee className="h-3.5 w-3.5 mr-1" />
+                      {deliveryFee.toFixed(2)}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Tax</span>
-                    <span>₹{taxes.toFixed(2)}</span>
+                    <span className="flex items-center">
+                      <IndianRupee className="h-3.5 w-3.5 mr-1" />
+                      {taxes.toFixed(2)}
+                    </span>
                   </div>
                   <div className="flex justify-between pt-2 border-t font-bold">
                     <span>Total</span>
-                    <span className="text-campus-purple">₹{total.toFixed(2)}</span>
+                    <span className="text-campus-purple flex items-center">
+                      <IndianRupee className="h-3.5 w-3.5 mr-1" />
+                      {total.toFixed(2)}
+                    </span>
                   </div>
                 </div>
               </CardContent>
@@ -384,9 +550,20 @@ export default function Checkout() {
                 <Button
                   className="w-full bg-campus-orange hover:bg-campus-orange/90"
                   onClick={handlePlaceOrder}
-                  disabled={isProcessing}
+                  disabled={isProcessing || isPaymentProcessing}
                 >
-                  {isProcessing ? "Processing..." : "Place Order"}
+                  {isPaymentProcessing ? (
+                    <div className="flex items-center">
+                      <Clock className="mr-2 h-4 w-4 animate-spin" />
+                      Processing Payment...
+                    </div>
+                  ) : isProcessing ? (
+                    "Processing..."
+                  ) : paymentMethod === "online" ? (
+                    "Pay Now"
+                  ) : (
+                    "Place Order"
+                  )}
                 </Button>
               </CardFooter>
             </Card>
