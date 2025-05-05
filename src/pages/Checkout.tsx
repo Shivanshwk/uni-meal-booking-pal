@@ -1,10 +1,13 @@
+
 import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/store/store";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle, IndianRupee, Clock } from "lucide-react";
+import { CheckCircle, IndianRupee, Clock, CreditCard, User, X, Check } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -19,6 +22,17 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 
 // Simulated database tables
 type SimulatedDatabase = {
@@ -67,6 +81,30 @@ const generateTokenNumber = () => {
   return Math.floor(10000 + Math.random() * 90000).toString();
 };
 
+// Card validation schema
+const cardFormSchema = z.object({
+  cardNumber: z
+    .string()
+    .min(16, "Card number must be 16 digits")
+    .max(19, "Card number is too long")
+    .refine(val => /^[0-9]{4}[ -]?[0-9]{4}[ -]?[0-9]{4}[ -]?[0-9]{4}$/.test(val.replace(/\s/g, '')), {
+      message: "Invalid card number format"
+    }),
+  cardExpiry: z
+    .string()
+    .refine(val => /^(0[1-9]|1[0-2])\/([0-9]{2})$/.test(val), {
+      message: "Expiry date should be in MM/YY format"
+    }),
+  cardCVV: z
+    .string()
+    .min(3, "CVV must be 3 or 4 digits")
+    .max(4, "CVV must be 3 or 4 digits")
+    .refine(val => /^[0-9]{3,4}$/.test(val), {
+      message: "CVV must contain only numbers"
+    }),
+  cardName: z.string().min(2, "Name on card is required"),
+});
+
 export default function Checkout() {
   const { cart, getCartTotal, clearCart, isAuthenticated, user } = useStore();
   const navigate = useNavigate();
@@ -84,6 +122,22 @@ export default function Checkout() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [pickupTime, setPickupTime] = useState("");
+  
+  // Card payment form
+  const cardForm = useForm<z.infer<typeof cardFormSchema>>({
+    resolver: zodResolver(cardFormSchema),
+    defaultValues: {
+      cardNumber: "",
+      cardExpiry: "",
+      cardCVV: "",
+      cardName: "",
+    },
+  });
+  
+  // Card validation states
+  const [cardNumberValid, setCardNumberValid] = useState(false);
+  const [cardExpiryValid, setCardExpiryValid] = useState(false);
+  const [cardCvvValid, setCardCvvValid] = useState(false);
   
   const cartTotal = getCartTotal();
   const deliveryFee = 2.00;
@@ -104,6 +158,35 @@ export default function Checkout() {
       navigate("/cart");
     }
   }, [cart, orderCompleted, navigate]);
+  
+  // Format card number as the user types
+  const formatCardNumber = (value: string) => {
+    const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "");
+    const matches = v.match(/\d{4,16}/g);
+    const match = (matches && matches[0]) || "";
+    const parts = [];
+    
+    for (let i = 0, len = match.length; i < len; i += 4) {
+      parts.push(match.substring(i, i + 4));
+    }
+    
+    if (parts.length) {
+      return parts.join(" ");
+    } else {
+      return value;
+    }
+  };
+  
+  // Format expiry date as user types MM/YY
+  const formatExpiryDate = (value: string) => {
+    const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "");
+    
+    if (v.length >= 2) {
+      return v.slice(0, 2) + "/" + v.slice(2, 4);
+    }
+    
+    return v;
+  };
   
   // Generate pickup time options (every 15 minutes from current time)
   const generatePickupTimeOptions = () => {
@@ -131,6 +214,40 @@ export default function Checkout() {
   };
   
   const pickupTimeOptions = generatePickupTimeOptions();
+  
+  // Validate fields as user types
+  useEffect(() => {
+    const subscription = cardForm.watch((value) => {
+      if (value.cardNumber) {
+        setCardNumberValid(/^[0-9]{4}\s[0-9]{4}\s[0-9]{4}\s[0-9]{1,4}$/.test(value.cardNumber));
+      }
+      
+      if (value.cardExpiry) {
+        const [month, year] = value.cardExpiry.split('/');
+        const currentYear = new Date().getFullYear() % 100;
+        const currentMonth = new Date().getMonth() + 1;
+        
+        let valid = /^(0[1-9]|1[0-2])\/([0-9]{2})$/.test(value.cardExpiry);
+        
+        if (valid) {
+          const expMonth = parseInt(month, 10);
+          const expYear = parseInt(year, 10);
+          
+          if (expYear < currentYear || (expYear === currentYear && expMonth < currentMonth)) {
+            valid = false;
+          }
+        }
+        
+        setCardExpiryValid(valid);
+      }
+      
+      if (value.cardCVV) {
+        setCardCvvValid(/^[0-9]{3,4}$/.test(value.cardCVV));
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [cardForm]);
   
   // Simulate adding user to database
   const addUserToDatabase = (userData: { name: string; email: string; phone: string }) => {
@@ -232,6 +349,19 @@ export default function Checkout() {
       return;
     }
     
+    // For online payment, validate the card form
+    if (paymentMethod === "online") {
+      const formValid = await cardForm.trigger();
+      if (!formValid) {
+        toast({
+          title: "Invalid card details",
+          description: "Please check your card information and try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
     setIsProcessing(true);
     
     try {
@@ -286,7 +416,7 @@ export default function Checkout() {
             <CardContent className="space-y-4">
               <div className="bg-gray-100 p-4 rounded-md text-center">
                 <p className="text-gray-500 text-sm">Your Token Number</p>
-                <div className="animate-pulse">
+                <div>
                   <p className="text-5xl font-bold text-campus-purple py-2">{tokenNumber}</p>
                 </div>
                 <p className="text-xs text-gray-400 mt-2">Show this number when collecting your order</p>
@@ -361,39 +491,32 @@ export default function Checkout() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
+                  <Label htmlFor="name">Full Name *</Label>
+                  <Input
                     id="name"
-                    className="w-full p-2 border rounded-md"
+                    className="w-full"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
                   />
                 </div>
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                    Email *
-                  </label>
-                  <input
-                    type="email"
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
                     id="email"
-                    className="w-full p-2 border rounded-md"
+                    type="email"
+                    className="w-full"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
                   />
                 </div>
                 <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                    Phone Number *
-                  </label>
-                  <input
-                    type="tel"
+                  <Label htmlFor="phone">Phone Number *</Label>
+                  <Input
                     id="phone"
-                    className="w-full p-2 border rounded-md"
+                    type="tel"
+                    className="w-full"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     required
@@ -408,12 +531,10 @@ export default function Checkout() {
               </CardHeader>
               <CardContent>
                 <div>
-                  <label htmlFor="pickup-time" className="block text-sm font-medium text-gray-700 mb-1">
-                    Pickup Time *
-                  </label>
+                  <Label htmlFor="pickup-time">Pickup Time *</Label>
                   <select
                     id="pickup-time"
-                    className="w-full p-2 border rounded-md"
+                    className="w-full p-2 border rounded-md mt-1"
                     value={pickupTime}
                     onChange={(e) => setPickupTime(e.target.value)}
                     required
@@ -439,55 +560,162 @@ export default function Checkout() {
                     <TabsTrigger value="online">Pay Online</TabsTrigger>
                     <TabsTrigger value="cash">Pay at Pickup</TabsTrigger>
                   </TabsList>
+                  
                   <TabsContent value="online" className="pt-4">
-                    <div className="space-y-4">
-                      <div>
-                        <label htmlFor="card-number" className="block text-sm font-medium text-gray-700 mb-1">
-                          Card Number *
-                        </label>
-                        <input
-                          type="text"
-                          id="card-number"
-                          className="w-full p-2 border rounded-md"
-                          placeholder="1234 5678 9012 3456"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label htmlFor="expiry" className="block text-sm font-medium text-gray-700 mb-1">
-                            Expiration Date *
-                          </label>
-                          <input
-                            type="text"
-                            id="expiry"
-                            className="w-full p-2 border rounded-md"
-                            placeholder="MM/YY"
-                          />
+                    <Form {...cardForm}>
+                      <div className="space-y-4 py-2">
+                        <div className="p-4 rounded-md bg-gray-50">
+                          <h3 className="text-sm font-semibold mb-4 flex items-center">
+                            <CreditCard className="mr-2 h-4 w-4" />
+                            Enter Card Details
+                          </h3>
+                          
+                          <div className="space-y-4">
+                            <FormField
+                              control={cardForm.control}
+                              name="cardNumber"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <div className="relative">
+                                    <FormLabel className="flex justify-between">
+                                      <span>Card Number</span>
+                                      <span className="text-xs text-gray-500">16 digits</span>
+                                    </FormLabel>
+                                    <FormControl>
+                                      <div className="relative">
+                                        <Input
+                                          placeholder="1234 5678 9012 3456"
+                                          value={field.value}
+                                          maxLength={19}
+                                          onChange={(e) => {
+                                            const formatted = formatCardNumber(e.target.value);
+                                            field.onChange(formatted);
+                                          }}
+                                          className={`pr-10 ${cardForm.formState.errors.cardNumber ? 'border-red-500' : ''}`}
+                                        />
+                                        {field.value && (
+                                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                            {cardNumberValid ? (
+                                              <Check className="h-4 w-4 text-green-500" />
+                                            ) : (
+                                              <X className="h-4 w-4 text-red-500" />
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                  </div>
+                                </FormItem>
+                              )}
+                            />
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                              <FormField
+                                control={cardForm.control}
+                                name="cardExpiry"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Expiry Date</FormLabel>
+                                    <FormControl>
+                                      <div className="relative">
+                                        <Input 
+                                          placeholder="MM/YY"
+                                          maxLength={5}
+                                          value={field.value}
+                                          onChange={(e) => {
+                                            const formatted = formatExpiryDate(e.target.value);
+                                            field.onChange(formatted);
+                                          }}
+                                          className={`pr-10 ${cardForm.formState.errors.cardExpiry ? 'border-red-500' : ''}`}
+                                        />
+                                        {field.value && (
+                                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                            {cardExpiryValid ? (
+                                              <Check className="h-4 w-4 text-green-500" />
+                                            ) : (
+                                              <X className="h-4 w-4 text-red-500" />
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              
+                              <FormField
+                                control={cardForm.control}
+                                name="cardCVV"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>CVV</FormLabel>
+                                    <FormControl>
+                                      <div className="relative">
+                                        <Input 
+                                          placeholder="123"
+                                          maxLength={4}
+                                          value={field.value}
+                                          onChange={(e) => {
+                                            const val = e.target.value.replace(/\D/g, '');
+                                            field.onChange(val);
+                                          }}
+                                          className={`pr-10 ${cardForm.formState.errors.cardCVV ? 'border-red-500' : ''}`}
+                                        />
+                                        {field.value && (
+                                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                            {cardCvvValid ? (
+                                              <Check className="h-4 w-4 text-green-500" />
+                                            ) : (
+                                              <X className="h-4 w-4 text-red-500" />
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                            
+                            <FormField
+                              control={cardForm.control}
+                              name="cardName"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="flex items-center">
+                                    <User className="h-3 w-3 mr-1" />
+                                    <span>Cardholder Name</span>
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="JOHN SMITH"
+                                      className={cardForm.formState.errors.cardName ? 'border-red-500' : ''}
+                                      {...field}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
                         </div>
-                        <div>
-                          <label htmlFor="cvv" className="block text-sm font-medium text-gray-700 mb-1">
-                            CVV *
-                          </label>
-                          <input
-                            type="text"
-                            id="cvv"
-                            className="w-full p-2 border rounded-md"
-                            placeholder="123"
-                          />
+                        <div className="mt-4 p-4 border border-gray-200 rounded-md bg-gray-50">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-500">Credit/Debit Card</span>
+                            <div className="flex space-x-2">
+                              <div className="w-10 h-6 bg-blue-600 rounded"></div>
+                              <div className="w-10 h-6 bg-red-500 rounded"></div>
+                              <div className="w-10 h-6 bg-gray-800 rounded"></div>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      <div>
-                        <label htmlFor="card-name" className="block text-sm font-medium text-gray-700 mb-1">
-                          Name on Card *
-                        </label>
-                        <input
-                          type="text"
-                          id="card-name"
-                          className="w-full p-2 border rounded-md"
-                        />
-                      </div>
-                    </div>
+                    </Form>
                   </TabsContent>
+                  
                   <TabsContent value="cash" className="pt-4">
                     <div className="bg-gray-50 p-4 rounded-md">
                       <p>You'll pay when you pick up your order.</p>
